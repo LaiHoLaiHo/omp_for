@@ -1,6 +1,4 @@
 #!/hetghome/hetgsoft/anaconda3/bin/python3.9
-#sed -i 's/\r//g' RK45_w_tur_C_fin.py
-#chmod 777 RK45_w_tur_C_fin.py
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -21,8 +19,7 @@ from os.path import exists
 #####################################################
 from ctypes import *
 import ctypes
-lib_file = "/hetghome/jordan/NeuOsc/Cfin_repro_2007_f1_right/cf_genmat_para_fin.so"
-#lib_file = "/hetghome/jordan/NeuOsc/C_repro_2007_f1_right/cf_genmat_para.so"
+lib_file = "./cf_genmat_para_fin.so"
 cfuns = CDLL(lib_file)
 #####################################################
 cur_t = time.strftime("%H-%M-%S",time.localtime())
@@ -36,7 +33,7 @@ t1=3 #final z
 ts = 0.01 #maxstep
 acu = 1e-5
 test = False
-step_num = 500
+step_num = 100
 test_run = False
 print("acu ", acu)
 print("t1 ",t1)
