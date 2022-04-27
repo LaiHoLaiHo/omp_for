@@ -178,29 +178,18 @@ if ConsMu == False:
     print("start to solve")
     Sol = RK45((tbif),z0,np.array([(1.0+0j)/(ms**(0.5))]*ms),t1,max_step=ts, rtol=acu, atol=acu * (10**(-3)), vectorized=False, first_step=None)
     print('sol input-ed')
-    Z = []
-    Qz = []
-    Count_z = 0
     pre_z = Sol.t
     st = time.time()    
     for j in range(step_num):
-        if Count_z%1000 == 0:
-            print("Sol.t ",Sol.t)
-            if test_run == False:
-                np.save(vec_path + "/vec_"+str(Sol.t),Sol.y)
-                print("save a result")
-            print("Sol.t ",Sol.t)
-        #print("step size ", Sol.t-pre_z)
-        #print("Sol.t ",Sol.t)
+        print("step size ", Sol.t-pre_z)
+        print("Sol.t ",Sol.t)
         pre_z = Sol.t
         Sol.step()
-        #print(Count_z)
-        Count_z +=1
         if Sol.status == 'finished':
             break
-        #print("loop time", time.time()-st)
+        print("loop time", time.time()-st)
     print("tol time ",time.time()-st)
-print("step_num ",step_num)
+    print("step_num ",step_num)
 
 
 
