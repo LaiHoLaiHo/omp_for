@@ -1,7 +1,7 @@
-#include <stdio.h>    
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <time.h>  
+#include <time.h>
 #include <omp.h>
 //#include <complex.h>
 /*icc -fPIC -shared -o cf_genmat_para_fin.so cf_genmat_para_fin.c -qopenmp*/
@@ -53,7 +53,7 @@ double fmuz(double z){
     double out;
     /*if (ConsMu == 0){
         out = pow(10.0,4.0) * exp(-0.3 * z);
-    } 
+    }
     else{
         out = pow(10.0,3.0);
     }*/
@@ -77,7 +77,7 @@ double ldkx(double kx, double z){
     }
     else{
         //out = CC * lda0(z) * (pow((abs(kx) / kcut) , -alpha/2.0)) /2.0 /M_PI;
-        
+
     }*/
     //out = CC * 300 * (pow((abs(kx) / kcut) , -alpha/2.0)) /2.0 /M_PI;
     return out;
@@ -87,7 +87,7 @@ double ldkx(double kx, double z){
 typedef struct pointda {
     double A1d[ms];
     //double y;
-    } POINTDA;
+} POINTDA;
 POINTDA *get_pointda(
     double *y, double z, double ar, double omg, double omga, double Omg, double vxp, double vxn, double vz
     )  // pointer to double array const false real
@@ -95,42 +95,29 @@ POINTDA *get_pointda(
     //time_t st = time(NULL);
     //printf("para_fin\n");
     double muz = fmuz(z);
-    double hvv = muz * (1-(vz * vz + vxp * vxn));
-    double hvva = muz * (1-(vz * vz + vxp * vxn)) * (-1.0) * ar;
-    double Lda = 2.0 * muz * (1-ar) * (1-(vz * vz + vxp * vxn));
-    double one_2pi = 1.0 /2.0 /M_PI;
-    double one_kcut = 1.0/ kcut;
-    double two_alpha = -alpha/2.0;
+    double hvv  = muz * (1-(vz * vz + vxp * vxn));
+    double hvva = -hvv * ar;
+    double Lda = 2.0 * (1-ar) * hvv;
+    const double one_2pi = 1.0 /2.0 /M_PI;
+    const double one_kcut = 1.0/ kcut;
+    const double two_alpha = -alpha/2.0;
     double factors = CC * 300 * muz * one_2pi;
     //------------------------------------------------
-    double* pLHSM;
-    pLHSM = malloc(ms * ms * sizeof(double));
+    double* pLHSM = calloc(ms * ms, sizeof(double));   // init to 0 automatically
     int i,j,k;
-    int cmodk,modk;
-    int cmodki, modki, cmodkj, modkj;
-    double MID;
-    POINTDA *pda;
-    POINTDA dqdt;
-    double A1d_i;
+    POINTDA *dqdt = malloc(sizeof(POINTDA));
+
     //printf("pre para\n");
-    #pragma omp parallel shared(pLHSM, pda, dqdt) private( i, j, k, cmodk, modk, cmodki, modki, cmodkj, modkj, MID)
-    {    
-        #pragma omp for
-        for(i=0;i<ms;i++){
-            for (j=0;j<ms;j++){
-                //k++;
-                //LHSM[i][j] = 0.0;
-                pLHSM[i * ms +j] = 0.0;
-            }
-        }
+    #pragma omp parallel private( i, j, k)
+    {
         //printf("%i\n",k);
-        
+
         //////////////////////////////////////////
-        #pragma omp for 
+        #pragma omp for
         for(i=0;i<ms;i+=4){
+
             j = i;
-            cmodk = i/4;          //count modk
-            modk = lk + cmodk * dk;
+            int modk = lk + (i/4) * dk;
             //back up 1/////////
             pLHSM[i * ms + j] =  (-Omg + omg + vxp * modk) + Lda;
             pLHSM[i * ms + j + 1] = -hvv;
@@ -147,41 +134,41 @@ POINTDA *get_pointda(
             pLHSM[(i+2) * ms + j+2 + 1] = -hvva;
 
             //////////
-            pLHSM[(i+3) * ms + j+3] =  (-Omg + omga + vxn * modk) + Lda;   
-            pLHSM[(i+3) * ms + j+3 - 1] = -hvva;   
+            pLHSM[(i+3) * ms + j+3] =  (-Omg + omga + vxn * modk) + Lda;
+            pLHSM[(i+3) * ms + j+3 - 1] = -hvva;
             pLHSM[(i+3) * ms + j+3 - 3] = -hvv;
-                
+
             for (j=0;j<ms;j+=4){
-                cmodki = i/4;          //count modk i 
-                modki = lk + cmodki * dk;
-                cmodkj = j/4;          //count modk i 
-                modkj = lk + cmodkj * dk;
-                MID = abs((modki - modkj) * 1.0);
+
+                //int modki = lk + (i/4) * dk;
+                //int modkj = lk + (j/4) * dk;
+                double MID = abs( (i-j)/4*dk );
                 //printf("%.17g abs MID\n ",MID);
-                for(k=0;k<4;k++){                                                
+                for(k=0;k<4;k++){
                     #ifdef ConsMu
-                        pLHSM[(i+k) * ms + j+k] = pLHSM[(i+k) * ms + j+k] + factors * (pow(((MID+0.00000251188643150981) * one_kcut) , two_alpha));
+                        pLHSM[(i+k) * ms + j+k] += factors * (pow(((MID+0.00000251188643150981) * one_kcut) , two_alpha));
                     #else                                                 //        lda0  fmuz             +0.00000251189
                                                                     //the ugly number is need for the modification of the shift of the x
-                        pLHSM[(i+k) * ms + j+k] = pLHSM[(i+k) * ms + j+k] + factors * (pow(((MID+0.00000251188643150981) * one_kcut) , two_alpha));
+                        pLHSM[(i+k) * ms + j+k] += factors * (pow(((MID+0.00000251188643150981) * one_kcut) , two_alpha));
                     #endif
                 }
-            
-            }     
+
+            }
         }
         //printf("1st for\n");
-        // LHSM is built 
+        // LHSM is built
         //////////////////////////////////////////////////////////////////////////////
         // start to mutilplied 2 matrix
-        #pragma omp for 
-        for(i=0;i<ms;i++){
-            dqdt.A1d[i] = 0.0;
-        }
-        //printf("2nd for\n");
         #pragma omp for
         for(i=0;i<ms;i++){
-            //printf("here......\n");
-            A1d_i = 0.0;
+            dqdt->A1d[i] = 0.0;
+        }
+        //printf("2nd for\n");
+
+        #pragma omp for
+        for(i=0;i<ms;i++){
+            double A1d_i = 0;
+            //#pragma omp for reduction(+:A1d_i)
             for(j = 0;j<ms;j++){
                 //printf("%f, ",pLHSM[i * ms + j]);
                 A1d_i += pLHSM[i * ms + j] * y[j] / vz;
@@ -189,12 +176,10 @@ POINTDA *get_pointda(
             }
             //printf("\n");
             //printf("\n");
-            dqdt.A1d[i] = A1d_i;
+            dqdt->A1d[i] = A1d_i;
         }
     }
     free(pLHSM);
-    pda = malloc(sizeof(POINTDA));
-    *pda = dqdt;
     /*for(i=0;i<ms;i++){
         printf("%f\n",dqdt.A1d[i]);
     }*/
@@ -203,7 +188,7 @@ POINTDA *get_pointda(
     double tuse = (double)(et - st) / CLOCKS_PER_SEC;
     printf("%f time used\n",tuse);*/
     //printf("here hrer\n");
-    return pda;
+    return dqdt;
 }
 
 void free_pointda(POINTDA *pda)
