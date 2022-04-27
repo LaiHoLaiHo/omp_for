@@ -176,8 +176,8 @@ if ConsMu == False:
     Sol = RK45((tbif),z0,np.array([(1.0+0j)/(ms**(0.5))]*ms),t1,max_step=ts, rtol=acu, atol=acu * (10**(-3)), vectorized=False, first_step=None)
     print('sol input-ed')
     pre_z = Sol.t
-    st = time.time()    
     for j in range(step_num):
+        st = time.time()
         print("step size ", Sol.t-pre_z)
         print("Sol.t ",Sol.t)
         pre_z = Sol.t
@@ -185,7 +185,7 @@ if ConsMu == False:
         if Sol.status == 'finished':
             break
         print("loop time", time.time()-st)
-    print("tol time ",time.time()-st)
+    #print("tol time ",time.time()-st)
     print("step_num ",step_num)
 
 
